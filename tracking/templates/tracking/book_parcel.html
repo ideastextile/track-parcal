@@ -1,0 +1,146 @@
+{% extends 'tracking/base.html' %}
+
+{% block title %}Book Parcel - ParcelTrack Pro{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-10 col-lg-8">
+                <div class="card">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-box fa-3x text-primary mb-3"></i>
+                            <h3>Book a Parcel Collection</h3>
+                            <p class="text-muted">Schedule a pickup for your parcel</p>
+                        </div>
+
+                        <form id="bookingForm">
+                            {% csrf_token %}
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5 class="mb-3">
+                                        <i class="fas fa-map-marker-alt me-2"></i>
+                                        Pickup Details
+                                    </h5>
+                                    
+                                    <div class="mb-3">
+                                        <label for="pickup_address" class="form-label">Pickup Address *</label>
+                                        <textarea class="form-control" id="pickup_address" name="pickup_address" 
+                                                  rows="3" required placeholder="Enter complete pickup address"></textarea>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h5 class="mb-3">
+                                        <i class="fas fa-shipping-fast me-2"></i>
+                                        Delivery Details
+                                    </h5>
+                                    
+                                    <div class="mb-3">
+                                        <label for="delivery_address" class="form-label">Delivery Address *</label>
+                                        <textarea class="form-control" id="delivery_address" name="delivery_address" 
+                                                  rows="3" required placeholder="Enter complete delivery address"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="recipient_name" class="form-label">Recipient Name *</label>
+                                        <input type="text" class="form-control" id="recipient_name" name="recipient_name" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="recipient_phone" class="form-label">Recipient Phone *</label>
+                                        <input type="tel" class="form-control" id="recipient_phone" name="recipient_phone" required>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Parcel Description *</label>
+                                <textarea class="form-control" id="description" name="description" 
+                                          rows="2" required placeholder="Describe the contents of your parcel"></textarea>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="weight" class="form-label">Weight (kg) *</label>
+                                        <input type="number" class="form-control" id="weight" name="weight" 
+                                               step="0.1" min="0.1" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="dimensions" class="form-label">Dimensions (L x W x H cm) *</label>
+                                        <input type="text" class="form-control" id="dimensions" name="dimensions" 
+                                               required placeholder="e.g., 30 x 20 x 15">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="delivery_instructions" class="form-label">Delivery Instructions</label>
+                                <textarea class="form-control" id="delivery_instructions" name="delivery_instructions" 
+                                          rows="2" placeholder="Any special instructions for delivery (optional)"></textarea>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-calendar-plus me-2"></i>
+                                    Book Collection
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('bookingForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    try {
+        const response = await fetch('/api/parcels/book/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert(`Parcel booked successfully! Your tracking number is: ${result.tracking_number}`);
+            window.location.href = '/my-parcels/';
+        } else {
+            let errorMessage = 'Booking failed:\n';
+            for (const [field, errors] of Object.entries(result)) {
+                errorMessage += `${field}: ${errors.join(', ')}\n`;
+            }
+            alert(errorMessage);
+        }
+    } catch (error) {
+        alert('Booking failed: ' + error.message);
+    }
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,545 @@
+
+{% extends 'tracking/base.html' %}
+
+
+{% block title %}Admin Dashboard - ParcelTrack Pro{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <h2 class="mb-4">
+            <i class="fas fa-tachometer-alt me-2"></i>
+            Admin Dashboard
+        </h2>
+
+        <!-- Stats Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-box fa-2x text-primary mb-2"></i>
+                        <h5 id="totalParcels">-</h5>
+                        <p class="text-muted mb-0">Total Parcels</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                        <h5 id="pendingParcels">-</h5>
+                        <p class="text-muted mb-0">Pending Pickup</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-truck fa-2x text-info mb-2"></i>
+                        <h5 id="inTransitParcels">-</h5>
+                        <p class="text-muted mb-0">In Transit</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                        <h5 id="deliveredParcels">-</h5>
+                        <p class="text-muted mb-0">Delivered</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="parcels-tab" data-bs-toggle="tab" data-bs-target="#parcels" type="button" role="tab">
+                    <i class="fas fa-boxes me-2"></i>
+                    Parcels
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="drivers-tab" data-bs-toggle="tab" data-bs-target="#drivers" type="button" role="tab">
+                    <i class="fas fa-users me-2"></i>
+                    Drivers
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="jobs-tab" data-bs-toggle="tab" data-bs-target="#jobs" type="button" role="tab">
+                    <i class="fas fa-tasks me-2"></i>
+                    Jobs
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="adminTabContent">
+            <!-- Parcels Tab -->
+            <div class="tab-pane fade show active" id="parcels" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">All Parcels</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="parcelsTable">
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-2">Loading parcels...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drivers Tab -->
+            <div class="tab-pane fade" id="drivers" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">All Drivers</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="driversTable">
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-2">Loading drivers...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Jobs Tab -->
+            <div class="tab-pane fade" id="jobs" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">All Jobs</h5>
+                    </div>
+                    <div class="card-body">
+                        {% comment %} <div id="jobsTable">
+                            <div class="text-center py-3">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-2">Loading jobs...</p>
+                            </div>
+                        </div> {% endcomment %}
+                        <table class="table">
+  <thead>
+    <tr>
+      <th>Parcel</th>
+      <th>Driver</th>
+      <th>Status</th>
+      <th>Type</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for job in jobs %}
+    <tr>
+      <td>{{ job.parcel.tracking_number }}</td>
+      <td>{{ job.driver.user.username }}</td>
+      <td>{{ job.status }}</td>
+      <td>{{ job.job_type }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="4" class="text-center text-muted">No jobs found.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Assign Driver Modal -->
+<div class="modal fade" id="assignDriverModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign Driver</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignDriverForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="parcelId" name="parcel_id">
+                    <div class="mb-3">
+                        <label for="driverId" class="form-label">Select Driver</label>
+                        <select class="form-control" id="driverId" name="driver_id" required>
+                            <option value="">Choose a driver...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="jobType" class="form-label">Job Type</label>
+                        <select class="form-control" id="jobType" name="job_type" required>
+                            <option value="pickup">Pickup</option>
+                            <option value="delivery">Delivery</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="assignDriver()">Assign Driver</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Parcel Table -->
+{% comment %} <div class="overflow-x-auto bg-white shadow-md rounded p-4 mb-6">
+  <table class="min-w-full table-auto border">
+    <thead class="bg-gray-200">
+      <tr>
+        <th class="px-4 py-2 border">Tracking #</th>
+        <th class="px-4 py-2 border">Customer</th>
+        <th class="px-4 py-2 border">Driver</th>
+        <th class="px-4 py-2 border">Status</th>
+        <th class="px-4 py-2 border">Customer Can Track?</th>
+    
+
+      </tr>
+    </thead>
+    <tbody>
+      {% for parcel in parcels %}
+      <tr class="hover:bg-gray-100">
+        <td class="px-4 py-2 border">{{ parcel.tracking_number }}</td>
+        <td class="px-4 py-2 border">{{ parcel.customer.username }}</td>
+        <td>
+    {% if parcel.current_driver %}
+        {{ parcel.current_driver.user.username }}
+    {% else %}
+        <span class="text-muted">Not assigned</span>
+    {% endif %}
+</td>
+        <td class="px-4 py-2 border">{{ parcel.status }}</td>
+        <td class="px-4 py-2 border">
+            
+          {% if parcel.can_customer_track %}
+          <span class="text-green-600">Yes</span>
+          {% else %}
+          <span class="text-red-600">No</span>
+          {% endif %}
+        </td>
+        <td>
+  <span class="badge ${parcel.can_customer_track ? 'bg-success' : 'bg-danger'}">
+    ${parcel.can_customer_track ? 'Yes' : 'No'}
+  </span>
+</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>  {% endcomment %}
+
+
+{% comment %} --------------------------------------- {% endcomment %}
+
+<div class="table-responsive bg-white shadow rounded p-3 mb-4">
+  <table class="table table-bordered table-hover align-middle mb-0">
+    <thead class="table-light">
+      <tr>
+        <th>Tracking #</th>
+        <th>Customer</th>
+        <th>Driver</th>
+        <th>Status</th>
+        <th>Customer Can Track?</th>
+      </tr>
+    </thead>
+    <tbody>
+       
+      {% for parcel in parcels %}
+      <tr>
+        <td>{{ parcel.tracking_number }}</td>
+        <td>{{ parcel.customer.username }}</td>
+        <td>
+          {% if parcel.current_driver %}
+            {{ parcel.current_driver.user.username }}
+          {% else %}
+            <span class="text-muted">Not assigned</span>
+          {% endif %}
+        </td>
+         {% load custom_filters %}
+        <td>
+          <span class="badge bg-secondary text-capitalize">{{ parcel.status|replace_underscores }}</span>
+        </td>
+        <td>
+          {% if parcel.can_customer_track %}
+            <span class="badge bg-success">Yes</span>
+          {% else %}
+            <span class="badge bg-danger">No</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+
+  
+</div>
+
+
+<!-- Map Section -->
+<h3 class="text-xl font-semibold mb-2">Live Driver Locations</h3>
+<div id="map" class="w-full h-[500px] rounded shadow"></div>
+
+<!-- Leaflet Scripts -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<script>
+  const map = L.map('map').setView([30.3753, 69.3451], 5);  // Center on Pakistan
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  {% for driver in drivers %}
+    {% if driver.current_latitude and driver.current_longitude %}
+      L.marker([{{ driver.current_latitude }}, {{ driver.current_longitude }}])
+        .addTo(map)
+        .bindPopup("<b>Driver:</b> {{ driver.user.username }}");
+    {% endif %}
+  {% endfor %}
+</script>
+<script>
+let parcelsData = [];
+let driversData = [];
+
+{% comment %} async function loadDashboardData() {
+    await Promise.all([
+        loadParcels(),
+        loadDrivers(),
+        loadStats()
+    ]);
+} {% endcomment %}
+async function loadDashboardData() {
+    try {
+        await loadParcels();
+        await loadDrivers();
+        await loadStats();
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+    }
+}
+
+async function loadParcels() {
+    try {
+        const response = await fetch('/api/parcels/');
+        if (response.ok) {
+            const data = await response.json();
+            parcelsData = data.results || data;
+            displayParcels(parcelsData);
+        }
+    } catch (error) {
+        console.error('Error loading parcels:', error);
+    }
+}
+
+async function loadDrivers() {
+    try {
+        const response = await fetch('/api/drivers/');
+        if (response.ok) {
+            const data = await response.json();
+            driversData = data.results || data;  // ✅ Fix: ensure array
+            displayDrivers(driversData);
+            populateDriverSelect();
+        }
+    } catch (error) {
+        console.error('Error loading drivers:', error);
+    }
+}
+
+async function loadStats() {
+    const stats = {
+        total: parcelsData.length,
+        pending: parcelsData.filter(p => p.status === 'order_placed' || p.status === 'awaiting_pickup').length,
+        inTransit: parcelsData.filter(p => p.status === 'collected' || p.status === 'in_transit' || p.status === 'out_for_delivery').length,
+        delivered: parcelsData.filter(p => p.status === 'delivered').length
+    };
+
+    document.getElementById('totalParcels').textContent = stats.total;
+    document.getElementById('pendingParcels').textContent = stats.pending;
+    document.getElementById('inTransitParcels').textContent = stats.inTransit;
+    document.getElementById('deliveredParcels').textContent = stats.delivered;
+}
+
+function displayParcels(parcels) {
+    const container = document.getElementById('parcelsTable');
+
+    if (parcels.length === 0) {
+        container.innerHTML = '<p class="text-center text-muted">No parcels found.</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Tracking #</th>
+                        <th>Customer</th>
+                        <th>Status</th>
+                        <th>Driver</th>
+                        <th>Booked</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${parcels.map(parcel => `
+                        <tr>
+                            <td><strong>${parcel.tracking_number}</strong></td>
+                            <td>${parcel.customer_name}</td>
+                            <td><span class="status-badge status-${parcel.status}">${formatStatus(parcel.status)}</span></td>
+                            <td>${parcel.driver_name || '<span class="text-muted">Not assigned</span>'}</td>
+                            <td>${formatDate(parcel.booked_at)}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="showAssignDriverModal(${parcel.id}, '${parcel.tracking_number}')">
+                                    <i class="fas fa-user-plus"></i>
+                                </button>
+                                <a href="/track/?tracking_number=${parcel.tracking_number}" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function displayDrivers(drivers) {
+    const container = document.getElementById('driversTable');
+
+    if (drivers.length === 0) {
+        container.innerHTML = '<p class="text-center text-muted">No drivers found.</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Vehicle</th>
+                        <th>Status</th>
+                        <th>Location</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${drivers.map(driver => `
+                        <tr>
+                            <td>${driver.user.first_name} ${driver.user.last_name}</td>
+                            <td>${driver.user.email}</td>
+                            <td>${driver.user.phone_number || '-'}</td>
+                            <td>${driver.vehicle_details || '-'}</td>
+                            <td>
+                                <span class="badge ${driver.is_available ? 'bg-success' : 'bg-secondary'}">
+                                    ${driver.is_available ? 'Available' : 'Busy'}
+                                </span>
+                            </td>
+                            <td>
+                                ${driver.current_latitude && driver.current_longitude 
+                                    ? `${driver.current_latitude.toFixed(4)}, ${driver.current_longitude.toFixed(4)}`
+                                    : 'Unknown'
+                                }
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function populateDriverSelect() {
+    const select = document.getElementById('driverId');
+    select.innerHTML = '<option value="">Choose a driver...</option>';
+
+    driversData.forEach(driver => {
+        const option = document.createElement('option');
+        option.value = driver.user.id;
+        option.textContent = `${driver.user.first_name} ${driver.user.last_name} (${driver.is_available ? 'Available' : 'Busy'})`;
+        select.appendChild(option);
+    });
+}
+
+function showAssignDriverModal(parcelId, trackingNumber) {
+    document.getElementById('parcelId').value = parcelId;
+    document.querySelector('#assignDriverModal .modal-title').textContent = `Assign Driver - ${trackingNumber}`;
+
+    const modal = new bootstrap.Modal(document.getElementById('assignDriverModal'));
+    modal.show();
+}
+
+async function assignDriver() {
+    const form = document.getElementById('assignDriverForm');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    try {
+        const response = await fetch(`/api/parcels/${data.parcel_id}/assign_driver/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                driver_id: data.driver_id,
+                job_type: data.job_type
+            })
+        });
+
+        if (response.ok) {
+            alert('Driver assigned successfully!');
+            bootstrap.Modal.getInstance(document.getElementById('assignDriverModal')).hide();
+            loadDashboardData(); // Refresh data
+        } else {
+            const error = await response.json();
+            alert('Failed to assign driver: ' + (error.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error assigning driver: ' + error.message);
+    }
+}
+
+function formatStatus(status) {
+    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function formatDate(dateString) {
+    return new Date(dateString).toLocaleDateString();
+}
+
+window.addEventListener('load', loadDashboardData);
+
+document.querySelectorAll('#adminTabs button').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', function(e) {
+        if (e.target.id === 'drivers-tab') {
+            loadDrivers();
+        } else if (e.target.id === 'parcels-tab') {
+            loadParcels();
+        }
+    });
+});
+</script>
+
+{% endblock %}
+
+

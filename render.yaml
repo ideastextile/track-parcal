@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: parcal-track
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn yourprojectname.wsgi:application"
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        value: "your-secret-key"
+

@@ -20,7 +20,7 @@ async-timeout==4.0.2
 attrs==22.2.0
 avro==1.11.1
 azure-agrifood-farming==1.0.0b2
-azure-ai-anomalydetector==3.0.0b7
+azure-ai-anomalydetector==3.0.0b6
 azure-ai-formrecognizer==3.2.1
 azure-ai-language-conversations==1.1.0b4
 azure-ai-language-questionanswering==1.1.1

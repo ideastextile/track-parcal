@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-p+v3vm#ln06o@53vxfh85)b$g+1xjj9xnk#52jd)8y)u2oz(30
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['parcal-tracking.onrender.com','*'] 
 
 
 # Application definition
@@ -52,6 +52,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+
 ]
 
 ROOT_URLCONF = 'parcel_tracking_system.urls'

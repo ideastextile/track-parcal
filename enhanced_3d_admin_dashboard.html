@@ -1,0 +1,1784 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}3D Enhanced Admin Dashboard - {{ block.super }}{% endblock %}
+
+{% block extrahead %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --warning-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        --danger-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        --glass-bg: rgba(255, 255, 255, 0.1);
+        --glass-border: rgba(255, 255, 255, 0.2);
+        --shadow-light: 0 8px 32px rgba(31, 38, 135, 0.37);
+        --shadow-dark: 0 20px 40px rgba(0, 0, 0, 0.1);
+        --text-primary: #2c3e50;
+        --text-secondary: #6c757d;
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        background-attachment: fixed;
+        min-height: 100vh;
+        overflow-x: hidden;
+    }
+
+    /* Floating particles background */
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: 
+            radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 40% 80%, rgba(120, 119, 198, 0.2) 0%, transparent 50%);
+        pointer-events: none;
+        animation: float 20s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-20px) rotate(10deg); }
+    }
+
+    .dashboard-container {
+        padding: 30px;
+        max-width: 1600px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Enhanced Header with 3D effect */
+    .dashboard-header {
+        background: var(--glass-bg);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border-radius: 30px;
+        padding: 40px;
+        margin-bottom: 40px;
+        box-shadow: 
+            var(--shadow-light),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        border: 1px solid var(--glass-border);
+        position: relative;
+        transform: perspective(1000px) rotateX(5deg);
+        transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .dashboard-header:hover {
+        transform: perspective(1000px) rotateX(0deg) translateY(-10px);
+        box-shadow: 
+            0 25px 50px rgba(31, 38, 135, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+
+    .dashboard-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--primary-gradient);
+        border-radius: 30px 30px 0 0;
+    }
+
+    .dashboard-title {
+        font-size: 3.5rem;
+        font-weight: 800;
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 15px;
+        text-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        letter-spacing: -0.02em;
+    }
+
+    .dashboard-subtitle {
+        color: var(--text-secondary);
+        font-size: 1.2rem;
+        font-weight: 400;
+        opacity: 0.8;
+    }
+
+    /* Enhanced Stats Grid with 3D Cards */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 30px;
+        margin-bottom: 50px;
+        perspective: 1000px;
+    }
+
+    .stat-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border-radius: 25px;
+        padding: 35px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--glass-border);
+        position: relative;
+        transform: translateZ(0);
+        transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: var(--primary-gradient);
+        border-radius: 25px 25px 0 0;
+    }
+
+    .stat-card::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+    }
+
+    .stat-card:hover {
+        transform: perspective(1000px) rotateY(10deg) rotateX(10deg) translateZ(50px);
+        box-shadow: 
+            0 25px 50px rgba(31, 38, 135, 0.4),
+            0 0 50px rgba(255, 255, 255, 0.1);
+    }
+
+    .stat-card:hover::after {
+        opacity: 1;
+    }
+
+    .stat-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: white;
+        margin-bottom: 25px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .stat-icon::before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        background: inherit;
+        border-radius: 22px;
+        filter: blur(5px);
+        opacity: 0.5;
+        z-index: -1;
+    }
+
+    .stat-card:hover .stat-icon {
+        transform: translateY(-5px) scale(1.1);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .stat-icon.parcels { background: var(--primary-gradient); }
+    .stat-icon.drivers { background: var(--secondary-gradient); }
+    .stat-icon.customers { background: var(--success-gradient); }
+    .stat-icon.revenue { background: var(--warning-gradient); }
+
+    .stat-number {
+        font-size: 3rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+        font-weight: 500;
+        margin-bottom: 15px;
+    }
+
+    .stat-change {
+        font-size: 0.95rem;
+        font-weight: 600;
+        padding: 8px 16px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .stat-change.positive { 
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+        border: 1px solid rgba(40, 167, 69, 0.2);
+    }
+
+    .stat-change.negative { 
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        border: 1px solid rgba(220, 53, 69, 0.2);
+    }
+
+    /* Enhanced Quick Actions */
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 25px;
+        margin-bottom: 50px;
+        perspective: 1000px;
+    }
+
+    .quick-action-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border-radius: 20px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--glass-border);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .quick-action-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+    }
+
+    .quick-action-card:hover::before {
+        left: 100%;
+    }
+
+    .quick-action-card:hover {
+        transform: perspective(1000px) rotateY(15deg) translateZ(30px);
+        box-shadow: 0 20px 40px rgba(31, 38, 135, 0.4);
+    }
+
+    .quick-action-icon {
+        font-size: 2.5rem;
+        margin-bottom: 20px;
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    .quick-action-title {
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        font-size: 1.1rem;
+    }
+
+    .quick-action-desc {
+        font-size: 0.95rem;
+        color: var(--text-secondary);
+        opacity: 0.8;
+    }
+
+    /* Enhanced Charts Container */
+    .charts-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+        margin-bottom: 50px;
+        perspective: 1000px;
+    }
+
+    .chart-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border-radius: 25px;
+        padding: 35px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--glass-border);
+        transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+    }
+
+    .chart-card:hover {
+        transform: perspective(1000px) rotateX(5deg) translateZ(20px);
+        box-shadow: 0 25px 50px rgba(31, 38, 135, 0.4);
+    }
+
+    .chart-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    /* Enhanced Main Content */
+    .main-content {
+        display: grid;
+        grid-template-columns: 1fr 450px;
+        gap: 40px;
+        margin-bottom: 50px;
+        perspective: 1000px;
+    }
+
+    .content-section {
+        background: var(--glass-bg);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border-radius: 25px;
+        padding: 35px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--glass-border);
+        transition: all 0.3s ease;
+    }
+
+    .content-section:hover {
+        transform: translateZ(10px);
+        box-shadow: 0 20px 40px rgba(31, 38, 135, 0.4);
+    }
+
+    /* Enhanced Buttons */
+    .btn {
+        padding: 14px 28px;
+        border: none;
+        border-radius: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.95rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+    }
+
+    .btn:hover::before {
+        left: 100%;
+    }
+
+    .btn:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn:active {
+        transform: translateY(-1px) scale(1.02);
+    }
+
+    .btn-primary { background: var(--primary-gradient); color: white; }
+    .btn-success { background: var(--success-gradient); color: white; }
+    .btn-warning { background: var(--secondary-gradient); color: white; }
+    .btn-danger { background: var(--danger-gradient); color: white; }
+
+    /* Enhanced Data Table */
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 25px;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 18px;
+        text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .data-table th {
+        background: rgba(255, 255, 255, 0.05);
+        font-weight: 700;
+        color: var(--text-primary);
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+
+    .data-table tr {
+        transition: all 0.3s ease;
+    }
+
+    .data-table tr:hover {
+        background: rgba(255, 255, 255, 0.05);
+        transform: scale(1.01);
+    }
+
+    /* Enhanced Status Badges */
+    .status-badge {
+        padding: 8px 16px;
+        border-radius: 25px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .status-pending { 
+        background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+        color: #856404;
+    }
+    .status-active { 
+        background: linear-gradient(135deg, #d4edda, #00b894);
+        color: #155724;
+    }
+    .status-completed { 
+        background: linear-gradient(135deg, #cce5ff, #74b9ff);
+        color: #004085;
+    }
+    .status-cancelled { 
+        background: linear-gradient(135deg, #f8d7da, #e17055);
+        color: #721c24;
+    }
+
+    /* Enhanced Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 2000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    .modal-content {
+        background: var(--glass-bg);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        margin: 3% auto;
+        padding: 40px;
+        border-radius: 25px;
+        width: 90%;
+        max-width: 650px;
+        box-shadow: 
+            0 25px 50px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        border: 1px solid var(--glass-border);
+        animation: modalSlideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+    }
+
+    @keyframes modalSlideIn {
+        from { 
+            transform: translateY(-100px) scale(0.8);
+            opacity: 0;
+        }
+        to { 
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+    }
+
+    /* Enhanced Form Controls */
+    .form-control, .form-select {
+        width: 100%;
+        padding: 16px 20px;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        font-size: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    .form-control:focus, .form-select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 
+            0 0 0 4px rgba(102, 126, 234, 0.1),
+            0 5px 15px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    /* Enhanced Sidebar Widgets */
+    .sidebar-widget {
+        background: var(--glass-bg);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border-radius: 20px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--glass-border);
+        transition: all 0.3s ease;
+    }
+
+    .sidebar-widget:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(31, 38, 135, 0.4);
+    }
+
+    /* Loading Animation */
+    .loading {
+        display: none;
+        text-align: center;
+        padding: 40px;
+    }
+
+    .spinner {
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+        .main-content {
+            grid-template-columns: 1fr;
+        }
+        
+        .charts-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 20px;
+        }
+        
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .dashboard-title {
+            font-size: 2.5rem;
+        }
+        
+        .quick-actions {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .quick-actions {
+            grid-template-columns: 1fr;
+        }
+        
+        .dashboard-header {
+            padding: 25px;
+        }
+        
+        .stat-card {
+            padding: 25px;
+        }
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary-gradient);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--secondary-gradient);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Enhanced Dashboard Header -->
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">
+            <i class="fas fa-cube"></i>
+            3D Admin Dashboard
+        </h1>
+        <p class="dashboard-subtitle">Next-generation control center with advanced analytics</p>
+    </div>
+
+    <!-- Enhanced Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon parcels">
+                <i class="fas fa-box"></i>
+            </div>
+            <div class="stat-number" id="totalParcels">{{ total_parcels|default:0 }}</div>
+            <div class="stat-label">Total Parcels</div>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up"></i> +12% from last month
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon drivers">
+                <i class="fas fa-truck"></i>
+            </div>
+            <div class="stat-number" id="totalDrivers">{{ total_drivers|default:0 }}</div>
+            <div class="stat-label">Active Drivers</div>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up"></i> +5% from last month
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon customers">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-number" id="totalCustomers">{{ total_customers|default:0 }}</div>
+            <div class="stat-label">Total Customers</div>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up"></i> +8% from last month
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon revenue">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="stat-number">$24.5K</div>
+            <div class="stat-label">Monthly Revenue</div>
+            <div class="stat-change positive">
+                <i class="fas fa-arrow-up"></i> +15% from last month
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Quick Actions -->
+    <div class="quick-actions">
+        <div class="quick-action-card" onclick="openModal('parcelModal')">
+            <div class="quick-action-icon">
+                <i class="fas fa-plus-circle"></i>
+            </div>
+            <div class="quick-action-title">Add New Parcel</div>
+            <div class="quick-action-desc">Create a new parcel booking</div>
+        </div>
+
+        <div class="quick-action-card" onclick="openModal('driverModal')">
+            <div class="quick-action-icon">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <div class="quick-action-title">Add Driver</div>
+            <div class="quick-action-desc">Register a new driver</div>
+        </div>
+
+        <div class="quick-action-card" onclick="openModal('customerModal')">
+            <div class="quick-action-icon">
+                <i class="fas fa-user-friends"></i>
+            </div>
+            <div class="quick-action-title">Add Customer</div>
+            <div class="quick-action-desc">Register a new customer</div>
+        </div>
+
+        <div class="quick-action-card" onclick="refreshDashboard()">
+            <div class="quick-action-icon">
+                <i class="fas fa-sync-alt"></i>
+            </div>
+            <div class="quick-action-title">Refresh Data</div>
+            <div class="quick-action-desc">Update dashboard statistics</div>
+        </div>
+    </div>
+
+    <!-- Enhanced Charts -->
+    <div class="charts-container">
+        <div class="chart-card">
+            <div class="chart-title">
+                <i class="fas fa-chart-line"></i>
+                Daily Parcels Analytics
+            </div>
+            <canvas id="dailyChart" width="400" height="200"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-title">
+                <i class="fas fa-chart-pie"></i>
+                Status Distribution
+            </div>
+            <canvas id="statusChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- Enhanced Main Content -->
+    <div class="main-content">
+        <!-- Data Management Section -->
+        <div class="content-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-database"></i>
+                    Data Management Center
+                </h2>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="loadParcels()">
+                        <i class="fas fa-box"></i> Parcels
+                    </button>
+                    <button class="btn btn-success" onclick="loadDrivers()">
+                        <i class="fas fa-truck"></i> Drivers
+                    </button>
+                    <button class="btn btn-warning" onclick="loadCustomers()">
+                        <i class="fas fa-users"></i> Customers
+                    </button>
+                </div>
+            </div>
+
+            <div id="dataTableContainer">
+                <div class="loading" id="loadingSpinner">
+                    <div class="spinner"></div>
+                    <p>Loading data...</p>
+                </div>
+                <div id="dataContent">
+                    <p style="text-align: center; color: var(--text-secondary); padding: 60px;">
+                        <i class="fas fa-mouse-pointer" style="font-size: 2rem; margin-bottom: 15px; display: block;"></i>
+                        Select a data type to view and manage records
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Sidebar -->
+        <div>
+            <!-- Recent Activity Widget -->
+            <div class="sidebar-widget">
+                <div class="widget-title">
+                    <i class="fas fa-clock"></i>
+                    Recent Activity
+                </div>
+                <div id="recentActivity">
+                    <!-- Activity items will be loaded here -->
+                </div>
+            </div>
+
+            <!-- System Status Widget -->
+            <div class="sidebar-widget">
+                <div class="widget-title">
+                    <i class="fas fa-server"></i>
+                    System Status
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon parcel">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div class="activity-content">
+                        <div class="activity-title">API Status</div>
+                        <div class="activity-time">All systems operational</div>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon user">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="activity-content">
+                        <div class="activity-title">Database</div>
+                        <div class="activity-time">Connected and healthy</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Modals -->
+<!-- Add Parcel Modal -->
+<div id="parcelModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add New Parcel</h2>
+            <span class="close" onclick="closeModal('parcelModal')">&times;</span>
+        </div>
+        <form id="parcelForm">
+            <div class="form-group">
+                <label class="form-label">Customer</label>
+                <select class="form-select" name="customer" required>
+                    <option value="">Select Customer</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Pickup Address</label>
+                <textarea class="form-control" name="pickup_address" required></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Delivery Address</label>
+                <textarea class="form-control" name="delivery_address" required></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Recipient Name</label>
+                <input type="text" class="form-control" name="recipient_name" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Recipient Phone</label>
+                <input type="tel" class="form-control" name="recipient_phone" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-control" name="description" required></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Weight (kg)</label>
+                <input type="number" class="form-control" name="weight" step="0.1" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Dimensions</label>
+                <input type="text" class="form-control" name="dimensions" placeholder="L x W x H in cm" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Priority</label>
+                <select class="form-select" name="priority" required>
+                    <option value="low">Low</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                </select>
+            </div>
+            <div class="action-buttons">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Create Parcel
+                </button>
+                <button type="button" class="btn btn-danger" onclick="closeModal('parcelModal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Driver Modal -->
+<div id="driverModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add New Driver</h2>
+            <span class="close" onclick="closeModal('driverModal')">&times;</span>
+        </div>
+        <form id="driverForm">
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" name="username" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control" name="password" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">First Name</label>
+                <input type="text" class="form-control" name="first_name" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Last Name</label>
+                <input type="text" class="form-control" name="last_name" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input type="tel" class="form-control" name="phone_number" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Vehicle Details</label>
+                <textarea class="form-control" name="vehicle_details" required></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">License Number</label>
+                <input type="text" class="form-control" name="license_number" required>
+            </div>
+            <div class="action-buttons">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Create Driver
+                </button>
+                <button type="button" class="btn btn-danger" onclick="closeModal('driverModal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Customer Modal -->
+<div id="customerModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Add New Customer</h2>
+            <span class="close" onclick="closeModal('customerModal')">&times;</span>
+        </div>
+        <form id="customerForm">
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" name="username" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-control" name="password" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">First Name</label>
+                <input type="text" class="form-control" name="first_name" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Last Name</label>
+                <input type="text" class="form-control" name="last_name" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input type="tel" class="form-control" name="phone_number" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Address</label>
+                <textarea class="form-control" name="address" required></textarea>
+            </div>
+            <div class="action-buttons">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Create Customer
+                </button>
+                <button type="button" class="btn btn-danger" onclick="closeModal('customerModal')">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Modal (Dynamic) -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="editModalTitle">Edit Record</h2>
+            <span class="close" onclick="closeModal('editModal')">&times;</span>
+        </div>
+        <div id="editModalContent">
+            <!-- Dynamic content will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<script>
+// Global variables
+let currentDataType = '';
+let currentData = [];
+
+// CSRF Token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+// Axios default configuration
+axios.defaults.headers.common['X-CSRFToken'] = csrftoken;
+
+// Enhanced Modal functions with 3D effects
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.style.display = 'block';
+    
+    // Add entrance animation
+    const modalContent = modal.querySelector('.modal-content');
+    modalContent.style.transform = 'translateY(-100px) scale(0.8)';
+    modalContent.style.opacity = '0';
+    
+    setTimeout(() => {
+        modalContent.style.transform = 'translateY(0) scale(1)';
+        modalContent.style.opacity = '1';
+    }, 10);
+    
+    if (modalId === 'parcelModal') {
+        loadCustomersForSelect();
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    const modalContent = modal.querySelector('.modal-content');
+    
+    // Add exit animation
+    modalContent.style.transform = 'translateY(-50px) scale(0.9)';
+    modalContent.style.opacity = '0';
+    
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 300);
+}
+
+// Load customers for parcel form
+async function loadCustomersForSelect() {
+    try {
+        const response = await axios.get('/api/admin/customers/');
+        const select = document.querySelector('#parcelModal select[name="customer"]');
+        select.innerHTML = '<option value="">Select Customer</option>';
+        
+        response.data.results.forEach(customer => {
+            const option = document.createElement('option');
+            option.value = customer.id;
+            option.textContent = `${customer.username} (${customer.email})`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading customers:', error);
+    }
+}
+
+// Enhanced data loading functions
+async function loadParcels() {
+    currentDataType = 'parcels';
+    showLoading();
+    
+    try {
+        const response = await axios.get('/api/admin/parcels/');
+        currentData = response.data.results;
+        displayParcelsTable(currentData);
+    } catch (error) {
+        console.error('Error loading parcels:', error);
+        showError('Failed to load parcels');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function loadDrivers() {
+    currentDataType = 'drivers';
+    showLoading();
+    
+    try {
+        const response = await axios.get('/api/admin/drivers/');
+        currentData = response.data.results;
+        displayDriversTable(currentData);
+    } catch (error) {
+        console.error('Error loading drivers:', error);
+        showError('Failed to load drivers');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function loadCustomers() {
+    currentDataType = 'customers';
+    showLoading();
+    
+    try {
+        const response = await axios.get('/api/admin/customers/');
+        currentData = response.data.results;
+        displayCustomersTable(currentData);
+    } catch (error) {
+        console.error('Error loading customers:', error);
+        showError('Failed to load customers');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Enhanced table display functions
+function displayParcelsTable(parcels) {
+    const container = document.getElementById('dataContent');
+    
+    let html = `
+        <div class="section-header">
+            <h3 class="section-title">
+                <i class="fas fa-box"></i>
+                Parcels Management
+            </h3>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="openModal('parcelModal')">
+                    <i class="fas fa-plus"></i> Add Parcel
+                </button>
+            </div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th><i class="fas fa-barcode"></i> Tracking Number</th>
+                    <th><i class="fas fa-user"></i> Customer</th>
+                    <th><i class="fas fa-info-circle"></i> Status</th>
+                    <th><i class="fas fa-flag"></i> Priority</th>
+                    <th><i class="fas fa-weight"></i> Weight</th>
+                    <th><i class="fas fa-cog"></i> Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    parcels.forEach(parcel => {
+        html += `
+            <tr>
+                <td><strong>${parcel.tracking_number}</strong></td>
+                <td>${parcel.customer_name}</td>
+                <td><span class="status-badge status-${parcel.status}">${parcel.status_display}</span></td>
+                <td><span class="status-badge status-${parcel.priority}">${parcel.priority_display}</span></td>
+                <td>${parcel.weight} kg</td>
+                <td>
+                    <button class="btn btn-warning" onclick="editRecord('parcel', ${parcel.id})" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteRecord('parcel', ${parcel.id})" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = html;
+    
+    // Add entrance animation
+    setTimeout(() => {
+        container.style.transform = 'translateY(0)';
+        container.style.opacity = '1';
+    }, 100);
+}
+
+function displayDriversTable(drivers) {
+    const container = document.getElementById('dataContent');
+    
+    let html = `
+        <div class="section-header">
+            <h3 class="section-title">
+                <i class="fas fa-truck"></i>
+                Drivers Management
+            </h3>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="openModal('driverModal')">
+                    <i class="fas fa-plus"></i> Add Driver
+                </button>
+            </div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th><i class="fas fa-user"></i> Name</th>
+                    <th><i class="fas fa-envelope"></i> Email</th>
+                    <th><i class="fas fa-car"></i> Vehicle</th>
+                    <th><i class="fas fa-signal"></i> Status</th>
+                    <th><i class="fas fa-star"></i> Rating</th>
+                    <th><i class="fas fa-cog"></i> Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    drivers.forEach(driver => {
+        html += `
+            <tr>
+                <td><strong>${driver.user.first_name} ${driver.user.last_name}</strong></td>
+                <td>${driver.user.email}</td>
+                <td>${driver.vehicle_type || 'N/A'}</td>
+                <td><span class="status-badge ${driver.is_available ? 'status-active' : 'status-pending'}">${driver.is_available ? 'Available' : 'Busy'}</span></td>
+                <td>${driver.rating}/5 ⭐</td>
+                <td>
+                    <button class="btn btn-warning" onclick="editRecord('driver', ${driver.user.id})" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteRecord('driver', ${driver.user.id})" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = html;
+}
+
+function displayCustomersTable(customers) {
+    const container = document.getElementById('dataContent');
+    
+    let html = `
+        <div class="section-header">
+            <h3 class="section-title">
+                <i class="fas fa-users"></i>
+                Customers Management
+            </h3>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="openModal('customerModal')">
+                    <i class="fas fa-plus"></i> Add Customer
+                </button>
+            </div>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th><i class="fas fa-user"></i> Name</th>
+                    <th><i class="fas fa-envelope"></i> Email</th>
+                    <th><i class="fas fa-phone"></i> Phone</th>
+                    <th><i class="fas fa-calendar"></i> Joined</th>
+                    <th><i class="fas fa-check-circle"></i> Status</th>
+                    <th><i class="fas fa-cog"></i> Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    customers.forEach(customer => {
+        html += `
+            <tr>
+                <td><strong>${customer.first_name} ${customer.last_name}</strong></td>
+                <td>${customer.email}</td>
+                <td>${customer.phone_number || 'N/A'}</td>
+                <td>${new Date(customer.created_at).toLocaleDateString()}</td>
+                <td><span class="status-badge ${customer.is_verified ? 'status-active' : 'status-pending'}">${customer.is_verified ? 'Verified' : 'Pending'}</span></td>
+                <td>
+                    <button class="btn btn-warning" onclick="editRecord('customer', ${customer.id})" title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteRecord('customer', ${customer.id})" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+            </tbody>
+        </table>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// CRUD operations
+async function editRecord(type, id) {
+    // Enhanced edit functionality with better UX
+    showSuccess(`Edit ${type} functionality - Coming soon!`);
+}
+
+async function deleteRecord(type, id) {
+    if (confirm(`⚠️ Are you sure you want to delete this ${type}?\n\nThis action cannot be undone.`)) {
+        try {
+            await axios.delete(`/api/admin/${type}s/${id}/`);
+            // Reload current data
+            if (currentDataType === 'parcels') loadParcels();
+            else if (currentDataType === 'drivers') loadDrivers();
+            else if (currentDataType === 'customers') loadCustomers();
+            
+            showSuccess(`✅ ${type} deleted successfully`);
+        } catch (error) {
+            console.error(`Error deleting ${type}:`, error);
+            showError(`❌ Failed to delete ${type}`);
+        }
+    }
+}
+
+// Enhanced form submissions
+document.getElementById('parcelForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    
+    try {
+        await axios.post('/api/parcels/book/', data);
+        closeModal('parcelModal');
+        e.target.reset();
+        if (currentDataType === 'parcels') loadParcels();
+        showSuccess('✅ Parcel created successfully');
+        refreshStats();
+    } catch (error) {
+        console.error('Error creating parcel:', error);
+        showError('❌ Failed to create parcel');
+    }
+});
+
+document.getElementById('driverForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    data.user_type = 'driver';
+    
+    try {
+        await axios.post('/api/auth/register/', data);
+        closeModal('driverModal');
+        e.target.reset();
+        if (currentDataType === 'drivers') loadDrivers();
+        showSuccess('✅ Driver created successfully');
+        refreshStats();
+    } catch (error) {
+        console.error('Error creating driver:', error);
+        showError('❌ Failed to create driver');
+    }
+});
+
+document.getElementById('customerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    data.user_type = 'customer';
+    
+    try {
+        await axios.post('/api/auth/register/', data);
+        closeModal('customerModal');
+        e.target.reset();
+        if (currentDataType === 'customers') loadCustomers();
+        showSuccess('✅ Customer created successfully');
+        refreshStats();
+    } catch (error) {
+        console.error('Error creating customer:', error);
+        showError('❌ Failed to create customer');
+    }
+});
+
+// Enhanced utility functions
+function showLoading() {
+    const spinner = document.getElementById('loadingSpinner');
+    const content = document.getElementById('dataContent');
+    
+    spinner.style.display = 'block';
+    content.style.display = 'none';
+    content.style.transform = 'translateY(20px)';
+    content.style.opacity = '0';
+}
+
+function hideLoading() {
+    const spinner = document.getElementById('loadingSpinner');
+    const content = document.getElementById('dataContent');
+    
+    spinner.style.display = 'none';
+    content.style.display = 'block';
+    
+    setTimeout(() => {
+        content.style.transform = 'translateY(0)';
+        content.style.opacity = '1';
+    }, 100);
+}
+
+function showSuccess(message) {
+    // Enhanced notification system
+    createNotification(message, 'success');
+}
+
+function showError(message) {
+    // Enhanced notification system
+    createNotification(message, 'error');
+}
+
+function createNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+        ${message}
+    `;
+    
+    // Add notification styles
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? 'var(--success-gradient)' : 'var(--danger-gradient)'};
+        color: white;
+        padding: 16px 24px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        z-index: 3000;
+        font-weight: 600;
+        backdrop-filter: blur(10px);
+        transform: translateX(400px);
+        transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Remove after 5 seconds
+    setTimeout(() => {
+        notification.style.transform = 'translateX(400px)';
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 500);
+    }, 5000);
+}
+
+async function refreshStats() {
+    try {
+        const response = await axios.get('/api/admin/dashboard/stats/');
+        const stats = response.data;
+        
+        // Animate number changes
+        animateNumber('totalParcels', stats.total_parcels);
+        animateNumber('totalDrivers', stats.total_drivers);
+        animateNumber('totalCustomers', stats.total_customers);
+        
+    } catch (error) {
+        console.error('Error refreshing stats:', error);
+    }
+}
+
+function animateNumber(elementId, targetValue) {
+    const element = document.getElementById(elementId);
+    const currentValue = parseInt(element.textContent) || 0;
+    const increment = (targetValue - currentValue) / 20;
+    
+    let currentNum = currentValue;
+    const timer = setInterval(() => {
+        currentNum += increment;
+        element.textContent = Math.round(currentNum);
+        
+        if (Math.abs(currentNum - targetValue) < 1) {
+            element.textContent = targetValue;
+            clearInterval(timer);
+        }
+    }, 50);
+}
+
+async function refreshDashboard() {
+    // Add loading state to refresh button
+    const refreshBtn = event.target;
+    const originalHTML = refreshBtn.innerHTML;
+    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+    refreshBtn.disabled = true;
+    
+    await refreshStats();
+    loadRecentActivity();
+    
+    // Reset button
+    setTimeout(() => {
+        refreshBtn.innerHTML = originalHTML;
+        refreshBtn.disabled = false;
+        showSuccess('🔄 Dashboard refreshed successfully');
+    }, 1000);
+}
+
+async function loadRecentActivity() {
+    try {
+        const response = await axios.get('/api/notifications/');
+        const activities = response.data.results.slice(0, 5);
+        
+        const container = document.getElementById('recentActivity');
+        let html = '';
+        
+        if (activities.length === 0) {
+            html = `
+                <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                    <i class="fas fa-bell-slash" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                    No recent activities
+                </div>
+            `;
+        } else {
+            activities.forEach((activity, index) => {
+                html += `
+                    <div class="activity-item" style="animation-delay: ${index * 0.1}s;">
+                        <div class="activity-icon parcel">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">${activity.title}</div>
+                            <div class="activity-time">${new Date(activity.created_at).toLocaleString()}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading recent activity:', error);
+        const container = document.getElementById('recentActivity');
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: var(--text-secondary);">
+                <i class="fas fa-exclamation-triangle" style="color: #ff6b6b; margin-bottom: 10px; display: block;"></i>
+                Failed to load activities
+            </div>
+        `;
+    }
+}
+
+// Enhanced dashboard initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Add loading animations
+    const elements = document.querySelectorAll('.stat-card, .quick-action-card, .chart-card, .content-section, .sidebar-widget');
+    elements.forEach((el, index) => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(30px)';
+        
+        setTimeout(() => {
+            el.style.transition = 'all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+    
+    // Initialize dashboard data
+    refreshStats();
+    loadRecentActivity();
+    
+    // Initialize charts if data is available
+    if (typeof dailyChartData !== 'undefined') {
+        setTimeout(initializeCharts, 500);
+    }
+});
+
+// Enhanced chart initialization with 3D effects
+function initializeCharts() {
+    // Daily Parcels Chart with enhanced styling
+    const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+    new Chart(dailyCtx, {
+        type: 'line',
+        data: {
+            labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+            datasets: [{
+                label: 'Daily Parcels',
+                data: [12, 19, 15, 25, 22, 30, 28],
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderWidth: 4,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#667eea',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 3,
+                pointRadius: 6,
+                pointHoverRadius: 8,
+                pointHoverBackgroundColor: '#764ba2',
+                pointHoverBorderColor: '#ffffff',
+                pointHoverBorderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#667eea',
+                    borderWidth: 2,
+                    cornerRadius: 10,
+                    displayColors: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        font: {
+                            weight: 600
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        font: {
+                            weight: 600
+                        }
+                    }
+                }
+            },
+            animation: {
+                duration: 2000,
+                easing: 'easeInOutQuart'
+            }
+        }
+    });
+
+    // Status Distribution Chart with enhanced styling
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending', 'In Transit', 'Delivered', 'Cancelled'],
+            datasets: [{
+                data: [25, 35, 30, 10],
+                backgroundColor: [
+                    '#ffc107',
+                    '#17a2b8',
+                    '#28a745',
+                    '#dc3545'
+                ],
+                borderWidth: 0,
+                hoverBorderWidth: 3,
+                hoverBorderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        font: {
+                            weight: 600
+                        },
+                        padding: 20,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#667eea',
+                    borderWidth: 2,
+                    cornerRadius: 10,
+                    displayColors: true
+                }
+            },
+            animation: {
+                duration: 2000,
+                easing: 'easeInOutQuart'
+            }
+        }
+    });
+}
+
+// Enhanced modal interactions
+window.onclick = function(event) {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (event.target === modal) {
+            const modalId = modal.id;
+            closeModal(modalId);
+        }
+    });
+}
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // ESC to close modals
+    if (e.key === 'Escape') {
+        const openModal = document.querySelector('.modal[style*="block"]');
+        if (openModal) {
+            closeModal(openModal.id);
+        }
+    }
+    
+    // Ctrl+R to refresh dashboard
+    if (e.ctrlKey && e.key === 'r') {
+        e.preventDefault();
+        refreshDashboard();
+    }
+});
+
+// Add touch gestures for mobile
+let touchStartY = 0;
+document.addEventListener('touchstart', (e) => {
+    touchStartY = e.touches[0].clientY;
+});
+
+document.addEventListener('touchend', (e) => {
+    const touchEndY = e.changedTouches[0].clientY;
+    const diff = touchStartY - touchEndY;
+    
+    // Pull down to refresh
+    if (diff < -100 && window.scrollY === 0) {
+        refreshDashboard();
+    }
+});
+</script>
+{% endblock %}
